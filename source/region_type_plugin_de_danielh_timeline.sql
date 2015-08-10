@@ -263,7 +263,7 @@ wwv_flow_api.create_plugin(
 'Original from: http://timeline.knightlab.com/',
 'Github: https://github.com/NUKnightLab/TimelineJS'))
 ,p_version_identifier=>'1.0'
-,p_about_url=>'http://blog.danielh.de/'
+,p_about_url=>'https://github.com/Dani3lSun/apex-plugin-timeline'
 ,p_files_version=>122
 );
 wwv_flow_api.create_plugin_attribute(
