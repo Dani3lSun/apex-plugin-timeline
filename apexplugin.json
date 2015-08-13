@@ -3,7 +3,7 @@
   "version" : "1.0",
   "description" : "Timeline is a region type plugin that allows you to draft very nice looking timelines with a single sql query.",
   "keywords" : ["timeline"],
-  "homepage" : "https://github.com/Dani3lSun/apex-plugin-timeline"
+  "homepage" : "https://github.com/Dani3lSun/apex-plugin-timeline",
   "bugs" : {
     "url" : "https://github.com/Dani3lSun/apex-plugin-timeline/issues",
     "email" : "daniel@danielh.de"
@@ -12,7 +12,7 @@
   "author" : {
     "name" : "Daniel Hochleitner",
     "email" : "daniel@danielh.de",
-    "url" : "http://blog.danielh.de/",
+    "url" : "http://blog.danielh.de/"
   },
   "repository" : {
     "type" : "git",
