@@ -41,6 +41,8 @@ SELECT start_date (date),
 ##Demo Application
 https://apex.oracle.com/pls/apex/f?p=57743:9
 
+##Preview
+![](https://github.com/Dani3lSun/apex-plugin-timeline/blob/master/preview.png)
 ---
 
 At the moment only whole days are supported. Support for hours is planned for future releases.
