@@ -1,4 +1,4 @@
-#Oracle Apex Region Plugin - Timeline
+#Oracle APEX Region Plugin - Timeline
 Timeline is a region type plugin that allows you to draft very nice looking timelines with a single sql query.
 It is based on JS Framework timeline.js (https://github.com/NUKnightLab/TimelineJS).
 
