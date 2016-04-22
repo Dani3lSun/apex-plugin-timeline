@@ -13,10 +13,10 @@ whenever sqlerror exit sql.sqlcode rollback
 begin
 wwv_flow_api.import_begin (
  p_version_yyyy_mm_dd=>'2013.01.01'
-,p_release=>'5.0.1.00.06'
-,p_default_workspace_id=>96713923238010156
-,p_default_application_id=>57743
-,p_default_owner=>'DHTEST'
+,p_release=>'5.0.3.00.03'
+,p_default_workspace_id=>42937890966776491
+,p_default_application_id=>600
+,p_default_owner=>'APEX_PLUGIN'
 );
 end;
 /
@@ -28,7 +28,7 @@ end;
 prompt --application/shared_components/plugins/region_type/de_danielh_timeline
 begin
 wwv_flow_api.create_plugin(
- p_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257846321451865337)
 ,p_plugin_type=>'REGION TYPE'
 ,p_name=>'DE.DANIELH.TIMELINE'
 ,p_display_name=>'Timeline'
@@ -36,7 +36,7 @@ wwv_flow_api.create_plugin(
 ,p_plsql_code=>wwv_flow_utilities.join(wwv_flow_t_varchar2(
 '/*-------------------------------------',
 ' * Timeline JS Functions',
-' * Version: 1.0 (06.08.2015)',
+' * Version: 1.1 (22.04.2016)',
 ' * Author:  Daniel Hochleitner',
 ' *-------------------------------------',
 '*/',
@@ -58,6 +58,7 @@ wwv_flow_api.create_plugin(
 '  l_headline_column    VARCHAR2(100) := p_region.attribute_11;',
 '  l_description_column VARCHAR2(100) := p_region.attribute_12;',
 '  l_media_url_column   VARCHAR2(100) := p_region.attribute_13;',
+'  l_timeline_type      VARCHAR2(100) := p_region.attribute_14;',
 '  -- other variables',
 '  l_region_id              VARCHAR2(100);',
 '  l_timeline_config_string VARCHAR2(2000);',
@@ -90,6 +91,12 @@ wwv_flow_api.create_plugin(
 '                                                  ''js/'',',
 '                              p_version        => NULL,',
 '                              p_skip_extension => FALSE);',
+'  -- type: timeline slider only css',
+'  IF l_timeline_type = ''SLIDERONLY'' THEN',
+'    apex_css.add(p_css => ''div#'' || l_region_id ||',
+'                          '' .vco-feature { display: none; } div#'' ||',
+'                          l_region_id || '' .vco-slider { display: none; }'');',
+'  END IF;',
 '  --',
 '  -- Get Data from Source',
 '  l_column_value_list := apex_plugin_util.get_data2(p_sql_statement  => p_region.source,',
@@ -126,15 +133,19 @@ wwv_flow_api.create_plugin(
 '  --',
 '  -- json header timeline',
 '  l_timeline_json_string := ''{ "timeline": {"headline":"'' ||',
-'                            REPLACE(REPLACE(l_headline,',
-'                                            ''"'',',
+'                            REPLACE(REPLACE(REPLACE(l_headline,',
+'                                                    ''"'',',
+'                                                    '' ''),',
+'                                            chr(10),',
 '                                            '' ''),',
-'                                    chr(10),',
+'                                    chr(13),',
 '                                    '' '') || ''","type":"default","text":"'' ||',
-'                            REPLACE(REPLACE(l_description,',
-'                                            ''"'',',
+'                            REPLACE(REPLACE(REPLACE(l_description,',
+'                                                    ''"'',',
+'                                                    '' ''),',
+'                                            chr(10),',
 '                                            '' ''),',
-'                                    chr(10),',
+'                                    chr(13),',
 '                                    '' '') || ''",'';',
 '  l_timeline_json_string := l_timeline_json_string || ''"asset": {"media":"'' ||',
 '                            l_preview_url ||',
@@ -169,36 +180,50 @@ wwv_flow_api.create_plugin(
 '                                                                                    .data_type,',
 '                                                                     p_value     => l_column_value_list(l_headline_no)',
 '                                                                                    .value_list(l_row_num));',
+'    l_headline_value       := apex_plugin_util.replace_substitutions(p_value  => l_headline_value,',
+'                                                                     p_escape => TRUE);',
 '    l_timeline_json_string := l_timeline_json_string || ''"headline":"'' ||',
-'                              REPLACE(REPLACE(l_headline_value,',
-'                                              ''"'',',
+'                              REPLACE(REPLACE(REPLACE(l_headline_value,',
+'                                                      ''"'',',
+'                                                      '' ''),',
+'                                              chr(10),',
 '                                              '' ''),',
-'                                      chr(10),',
+'                                      chr(13),',
 '                                      '' '') || ''",'';',
 '    -- description',
-'    l_description_value := apex_plugin_util.get_value_as_varchar2(p_data_type => l_column_value_list(l_description_no)',
-'                                                                                 .data_type,',
-'                                                                  p_value     => l_column_value_list(l_description_no)',
-'                                                                                 .value_list(l_row_num));',
+'    IF l_description_no IS NOT NULL THEN',
+'      l_description_value := apex_plugin_util.get_value_as_varchar2(p_data_type => l_column_value_list(l_description_no)',
+'                                                                                   .data_type,',
+'                                                                    p_value     => l_column_value_list(l_description_no)',
+'                                                                                   .value_list(l_row_num));',
+'    END IF;',
 '    IF l_description_value IS NULL THEN',
 '      l_timeline_json_string := l_timeline_json_string || ''"text":"",'';',
 '    ELSE',
+'      l_description_value    := apex_plugin_util.replace_substitutions(p_value  => l_description_value,',
+'                                                                       p_escape => TRUE);',
 '      l_timeline_json_string := l_timeline_json_string || ''"text":"'' ||',
-'                                REPLACE(REPLACE(l_description_value,',
-'                                                ''"'',',
+'                                REPLACE(REPLACE(REPLACE(l_description_value,',
+'                                                        ''"'',',
+'                                                        '' ''),',
+'                                                chr(10),',
 '                                                '' ''),',
-'                                        chr(10),',
+'                                        chr(13),',
 '                                        '' '') || ''",'';',
 '    END IF;',
 '    -- media url',
-'    l_media_url_value := apex_plugin_util.get_value_as_varchar2(p_data_type => l_column_value_list(l_media_url_no)',
-'                                                                               .data_type,',
-'                                                                p_value     => l_column_value_list(l_media_url_no)',
-'                                                                               .value_list(l_row_num));',
+'    IF l_media_url_no IS NOT NULL THEN',
+'      l_media_url_value := apex_plugin_util.get_value_as_varchar2(p_data_type => l_column_value_list(l_media_url_no)',
+'                                                                                 .data_type,',
+'                                                                  p_value     => l_column_value_list(l_media_url_no)',
+'                                                                                 .value_list(l_row_num));',
+'    END IF;',
 '    IF l_media_url_value IS NULL THEN',
 '      l_timeline_json_string := l_timeline_json_string ||',
 '                                ''"asset":{"media":"","credit":"","caption":""}'';',
 '    ELSE',
+'      l_media_url_value      := apex_plugin_util.replace_substitutions(p_value  => l_media_url_value,',
+'                                                                       p_escape => TRUE);',
 '      l_timeline_json_string := l_timeline_json_string ||',
 '                                ''"asset":{"media":"'' || l_media_url_value ||',
 '                                ''","credit":"","caption":""}'';',
@@ -211,7 +236,8 @@ wwv_flow_api.create_plugin(
 '  l_timeline_json_string := l_timeline_json_string || '']}}'';',
 '  --',
 '  -- write inline timeline json',
-'  apex_javascript.add_inline_code(p_code => ''var dataObject = '' ||',
+'  apex_javascript.add_inline_code(p_code => ''var dataObject_'' ||',
+'                                            l_region_id || '' = '' ||',
 '                                            l_timeline_json_string);',
 '  --',
 '  --',
@@ -222,7 +248,7 @@ wwv_flow_api.create_plugin(
 '  l_timeline_config_string := l_timeline_config_string || '', height: '''''' ||',
 '                              l_height || '''''''';',
 '  l_timeline_config_string := l_timeline_config_string ||',
-'                              '', source: dataObject'';',
+'                              '', source: dataObject_'' || l_region_id;',
 '  l_timeline_config_string := l_timeline_config_string || '', embed_id: '''''' ||',
 '                              l_region_id || '''''''';',
 '  l_timeline_config_string := l_timeline_config_string || '', font: '''''' ||',
@@ -255,20 +281,20 @@ wwv_flow_api.create_plugin(
 '       NULL as description,<br>',
 '       NULL as media_url<br>',
 'FROM timeline'))
-,p_substitute_attributes=>false
+,p_substitute_attributes=>true
 ,p_subscribe_plugin_settings=>true
 ,p_help_text=>wwv_flow_utilities.join(wwv_flow_t_varchar2(
 'Region Plugin using OpenSource JS framework "timeline.js" to display events in a beautiful timeline using pure SQL.',
 'Sources of all socialmedia mediums are supported (Twitter/Youtube/Vimeo/etc.). simple Images also.',
 'Original from: http://timeline.knightlab.com/',
 'Github: https://github.com/NUKnightLab/TimelineJS'))
-,p_version_identifier=>'1.0'
+,p_version_identifier=>'1.1'
 ,p_about_url=>'https://github.com/Dani3lSun/apex-plugin-timeline'
 ,p_files_version=>122
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214935808092126724)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257875268979924454)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>1
 ,p_display_sequence=>10
@@ -279,8 +305,8 @@ wwv_flow_api.create_plugin_attribute(
 ,p_help_text=>'Master Headline of the first page.'
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214936064465141410)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257875525352939140)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>2
 ,p_display_sequence=>20
@@ -291,8 +317,8 @@ wwv_flow_api.create_plugin_attribute(
 ,p_help_text=>'Master Description of the first page.'
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214936452574150271)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257875913461948001)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>3
 ,p_display_sequence=>30
@@ -309,8 +335,8 @@ wwv_flow_api.create_plugin_attribute(
 'and so on...'))
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214936660898151714)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257876121785949444)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>4
 ,p_display_sequence=>40
@@ -321,8 +347,8 @@ wwv_flow_api.create_plugin_attribute(
 ,p_help_text=>'Master Caption of the first page.'
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214937858132210360)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257877319020008090)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>5
 ,p_display_sequence=>50
@@ -335,127 +361,127 @@ wwv_flow_api.create_plugin_attribute(
 ,p_help_text=>'Choose the default font of all slides.'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214938060910210782)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257877521798008512)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>10
 ,p_display_value=>'AbrilFatface-Average'
 ,p_return_value=>'AbrilFatface-Average'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214938464013211946)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257877924901009676)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>20
 ,p_display_value=>'Arvo-PTSans'
 ,p_return_value=>'Arvo-PTSans'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214938924225213073)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257878385113010803)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>30
 ,p_display_value=>'Bevan-PotanoSans'
 ,p_return_value=>'Bevan-PotanoSans'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214939342207214010)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257878803095011740)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>40
 ,p_display_value=>'BreeSerif-OpenSans'
 ,p_return_value=>'BreeSerif-OpenSans'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214939737937215179)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257879198825012909)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>50
 ,p_display_value=>'DroidSerif-DroidSans'
 ,p_return_value=>'DroidSerif-DroidSans'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214940139583216065)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257879600471013795)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>60
 ,p_display_value=>'Georgia-Helvetica'
 ,p_return_value=>'Georgia-Helvetica'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214940538942216922)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257879999830014652)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>70
 ,p_display_value=>'Lekton-Molengo'
 ,p_return_value=>'Lekton-Molengo'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214940956021217897)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257880416909015627)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>80
 ,p_display_value=>'Merriweather-NewsCycle'
 ,p_return_value=>'Merriweather-NewsCycle'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214941312703218711)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257880773591016441)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>90
 ,p_display_value=>'NewsCycle-Merriweather'
 ,p_return_value=>'NewsCycle-Merriweather'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214941745158219529)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257881206046017259)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>100
 ,p_display_value=>'NixieOne-Ledger'
 ,p_return_value=>'NixieOne-Ledger'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214942074670220604)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257881535558018334)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>110
 ,p_display_value=>'Pacifico-Arimo'
 ,p_return_value=>'Pacifico-Arimo'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214942652067221539)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257882112955019269)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>120
 ,p_display_value=>'PlayfairDisplay-Muli'
 ,p_return_value=>'PlayfairDisplay-Muli'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214943058331222408)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257882519219020138)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>130
 ,p_display_value=>'PoiretOne-Molengo'
 ,p_return_value=>'PoiretOne-Molengo'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214943611476223251)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257883072364020981)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>140
 ,p_display_value=>'PTSerif-PTSans'
 ,p_return_value=>'PTSerif-PTSans'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214943982384224010)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257883443272021740)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>150
 ,p_display_value=>'PT'
 ,p_return_value=>'PT'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214944445654224983)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257883906542022713)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>160
 ,p_display_value=>'Rancho-Gudea'
 ,p_return_value=>'Rancho-Gudea'
 );
 wwv_flow_api.create_plugin_attr_value(
- p_id=>wwv_flow_api.id(11214944794454225985)
-,p_plugin_attribute_id=>wwv_flow_api.id(11214937858132210360)
+ p_id=>wwv_flow_api.id(11257884255342023715)
+,p_plugin_attribute_id=>wwv_flow_api.id(11257877319020008090)
 ,p_display_sequence=>170
 ,p_display_value=>'SansitaOne-Kameron'
 ,p_return_value=>'SansitaOne-Kameron'
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214947418167273250)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257886879055070980)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>6
 ,p_display_sequence=>60
@@ -528,8 +554,8 @@ wwv_flow_api.create_plugin_attribute(
 'uk Ukrainian<br>'))
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214947747394310735)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257887208282108465)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>7
 ,p_display_sequence=>70
@@ -541,8 +567,8 @@ wwv_flow_api.create_plugin_attribute(
 ,p_help_text=>'Enter the default width. Valid inputs are pixels(without px) or percent values(with %).'
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214947965236312575)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257887426124110305)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>8
 ,p_display_sequence=>80
@@ -554,8 +580,8 @@ wwv_flow_api.create_plugin_attribute(
 ,p_help_text=>'Enter the default height. Valid input is size in pixel(without px).'
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214987265649862726)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257926726537660456)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>9
 ,p_display_sequence=>90
@@ -567,8 +593,8 @@ wwv_flow_api.create_plugin_attribute(
 ,p_help_text=>'Choose the start date column of your sql query.'
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214987644844865461)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257927105732663191)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>10
 ,p_display_sequence=>100
@@ -580,8 +606,8 @@ wwv_flow_api.create_plugin_attribute(
 ,p_help_text=>'Choose the end date column of your sql query.'
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214987879172868539)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257927340060666269)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>11
 ,p_display_sequence=>110
@@ -593,8 +619,8 @@ wwv_flow_api.create_plugin_attribute(
 ,p_help_text=>'Choose the headline column of your sql query.'
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214988181840870948)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257927642728668678)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>12
 ,p_display_sequence=>120
@@ -606,17 +632,48 @@ wwv_flow_api.create_plugin_attribute(
 ,p_help_text=>'Choose the description column of your sql query.'
 );
 wwv_flow_api.create_plugin_attribute(
- p_id=>wwv_flow_api.id(11214988486277873620)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257927947165671350)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_attribute_scope=>'COMPONENT'
 ,p_attribute_sequence=>13
 ,p_display_sequence=>130
-,p_prompt=>'Event Media URL'
+,p_prompt=>'Event Media URL Column'
 ,p_attribute_type=>'REGION SOURCE COLUMN'
 ,p_is_required=>false
 ,p_column_data_types=>'VARCHAR2'
 ,p_is_translatable=>false
 ,p_help_text=>'Choose the Media URL column of your sql query.'
+);
+wwv_flow_api.create_plugin_attribute(
+ p_id=>wwv_flow_api.id(49340730079392006)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
+,p_attribute_scope=>'COMPONENT'
+,p_attribute_sequence=>14
+,p_display_sequence=>5
+,p_prompt=>'Timeline Type'
+,p_attribute_type=>'SELECT LIST'
+,p_is_required=>true
+,p_default_value=>'FULL'
+,p_is_translatable=>false
+,p_lov_type=>'STATIC'
+,p_examples=>wwv_flow_utilities.join(wwv_flow_t_varchar2(
+'Full Timeline: Displays content/media part + timeline slider<br>',
+'Timeline Slider only: Displays only the timeline slider'))
+,p_help_text=>'Choose the type of timeline'
+);
+wwv_flow_api.create_plugin_attr_value(
+ p_id=>wwv_flow_api.id(49341351684393023)
+,p_plugin_attribute_id=>wwv_flow_api.id(49340730079392006)
+,p_display_sequence=>10
+,p_display_value=>'Full Timeline'
+,p_return_value=>'FULL'
+);
+wwv_flow_api.create_plugin_attr_value(
+ p_id=>wwv_flow_api.id(49341765059398110)
+,p_plugin_attribute_id=>wwv_flow_api.id(49340730079392006)
+,p_display_sequence=>20
+,p_display_value=>'Timeline Slider only'
+,p_return_value=>'SLIDERONLY'
 );
 end;
 /
@@ -628,8 +685,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214948623823435883)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257888084711233613)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/blank.gif'
 ,p_mime_type=>'image/gif'
 ,p_file_charset=>'utf-8'
@@ -658,8 +715,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214948882012435884)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257888342900233614)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/fancybox_sprite.png'
 ,p_mime_type=>'image/png'
 ,p_file_charset=>'utf-8'
@@ -734,8 +791,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214949293432435890)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257888754320233620)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/fancybox_sprite@2x.png'
 ,p_mime_type=>'image/png'
 ,p_file_charset=>'utf-8'
@@ -820,8 +877,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214949713835435896)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257889174723233626)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/loading.gif'
 ,p_mime_type=>'image/gif'
 ,p_file_charset=>'utf-8'
@@ -976,8 +1033,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214950052484435898)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257889513372233628)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/loading@2x.gif'
 ,p_mime_type=>'image/gif'
 ,p_file_charset=>'utf-8'
@@ -1688,8 +1745,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214950416891435900)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257889877779233630)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/dark.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -1724,8 +1781,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214950848017435903)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257890308905233633)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/AbrilFatface-Average.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -1760,8 +1817,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214951226367435905)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257890687255233635)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/Arvo-PTSans.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -1796,8 +1853,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214951565291435906)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257891026179233636)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/Bevan-PotanoSans.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -1834,8 +1891,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214952009060435907)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257891469948233637)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/BreeSerif-OpenSans.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -1871,8 +1928,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214952419507435908)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257891880395233638)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/DroidSerif-DroidSans.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -1908,8 +1965,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214952775735435910)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257892236623233640)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/Georgia-Helvetica.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -1944,8 +2001,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214953182334435911)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257892643222233641)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/Lekton-Molengo.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -1980,8 +2037,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214953592127435912)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257893053015233642)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/Lora-Istok.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2018,8 +2075,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214953993006435914)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257893453894233644)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/Merriweather-NewsCycle.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2056,8 +2113,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214954382894435916)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257893843782233646)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/NewsCycle-Merriweather.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2092,8 +2149,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214954822953435917)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257894283841233647)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/NixieOne-Ledger.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2129,8 +2186,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214955210831435919)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257894671719233649)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/PT.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2165,8 +2222,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214955613600435920)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257895074488233650)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/PTSerif-PTSans.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2201,8 +2258,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214956034342435922)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257895495230233652)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/Pacifico-Arimo.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2237,8 +2294,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214956418454435924)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257895879342233654)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/PlayfairDisplay-Muli.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2275,8 +2332,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214956801553435925)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257896262441233655)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/PoiretOne-Molengo.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2311,8 +2368,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214957186332435927)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257896647220233657)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/Rancho-Gudea.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2347,8 +2404,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214957657181435929)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257897118069233659)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/font/SansitaOne-Kameron.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -2530,8 +2587,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214958054355435931)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257897515243233661)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/timeline-dark.png'
 ,p_mime_type=>'image/png'
 ,p_file_charset=>'utf-8'
@@ -2964,8 +3021,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214958361862435933)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257897822750233663)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/timeline-dark@2x.png'
 ,p_mime_type=>'image/png'
 ,p_file_charset=>'utf-8'
@@ -3391,8 +3448,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214958832218435936)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257898293106233666)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/themes/timeline-texture.png'
 ,p_mime_type=>'image/png'
 ,p_file_charset=>'utf-8'
@@ -4104,8 +4161,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214959225536435940)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257898686424233670)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/timeline.css'
 ,p_mime_type=>'text/css'
 ,p_file_charset=>'utf-8'
@@ -4280,8 +4337,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214959650821435942)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257899111709233672)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/timeline.png'
 ,p_mime_type=>'image/png'
 ,p_file_charset=>'utf-8'
@@ -4707,8 +4764,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214960033968435945)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257899494856233675)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'css/timeline@2x.png'
 ,p_mime_type=>'image/png'
 ,p_file_charset=>'utf-8'
@@ -4738,8 +4795,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214960452124435948)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257899913012233678)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/af.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -4773,8 +4830,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214960767155435950)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257900228043233680)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ar.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -4807,8 +4864,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214961244677435952)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257900705565233682)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/be.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -4841,8 +4898,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214961568916435954)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257901029804233684)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/bg.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -4872,8 +4929,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214962032831435957)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257901493719233687)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ca.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -4904,8 +4961,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214962385480435959)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257901846368233689)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/cz.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -4935,8 +4992,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214962856659435962)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257902317547233692)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/da.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -4967,8 +5024,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214963219447435965)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257902680335233695)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/de.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5002,8 +5059,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214963559402435967)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257903020290233697)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/el.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5034,8 +5091,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214963987290435970)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257903448178233700)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/en-24hr.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5066,8 +5123,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214964425513435972)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257903886401233702)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/en-week.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5098,8 +5155,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214964847517435975)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257904308405233705)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/en.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5130,8 +5187,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214965247624435977)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257904708512233707)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/eo.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5161,8 +5218,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214965637251435980)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257905098139233710)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/es.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5192,8 +5249,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214966049555435982)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257905510443233712)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/et.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5224,8 +5281,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214966456381435985)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257905917269233715)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/eu.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5258,8 +5315,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214966788282435988)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257906249170233718)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/fa.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5290,8 +5347,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214967187364435990)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257906648252233720)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/fi.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5322,8 +5379,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214967573603435993)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257907034491233723)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/fo.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5354,8 +5411,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214967928125435996)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257907389013233726)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/fr.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5385,8 +5442,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214968278571435999)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257907739459233729)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/fy.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5418,8 +5475,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214968740013436002)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257908200901233732)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ga.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5450,8 +5507,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214969137959436004)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257908598847233734)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/gl.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5484,8 +5541,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214969490964436007)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257908951852233737)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/he.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5522,8 +5579,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214969895663436010)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257909356551233740)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/hi.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5553,8 +5610,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214970269500436013)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257909730388233743)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/hr.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5585,8 +5642,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214970740971436016)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257910201859233746)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/hu.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5620,8 +5677,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214971096853436020)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257910557741233750)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/hy.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5651,8 +5708,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214971519020436022)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257910979908233752)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/id.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5683,8 +5740,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214971912292436026)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257911373180233756)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/is.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5715,8 +5772,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214972261513436029)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257911722401233759)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/it.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5750,8 +5807,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214972710996436032)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257912171884233762)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/iw.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5783,8 +5840,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214973122404436036)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257912583292233766)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ja.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5821,8 +5878,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214973555552436039)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257913016440233769)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ka.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5853,8 +5910,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214973945235436043)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257913406123233773)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ko.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5884,8 +5941,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214974350148436047)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257913811036233777)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/lb.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5916,8 +5973,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214974683861436051)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257914144749233781)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/lt.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5948,8 +6005,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214975080180436054)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257914541068233784)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/lv.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -5979,8 +6036,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214975515524436058)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257914976412233788)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ms.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6018,8 +6075,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214975920695436061)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257915381583233791)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ne.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6049,8 +6106,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214976335351436065)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257915796239233795)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/nl.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6081,8 +6138,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214976720756436069)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257916181644233799)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/no.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6113,8 +6170,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214977152600436072)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257916613488233802)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/pl.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6145,8 +6202,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214977520309436076)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257916981197233806)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/pt-br.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6176,8 +6233,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214977889995436080)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257917350883233810)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/pt.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6207,8 +6264,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214978293146436083)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257917754034233813)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/rm.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6239,8 +6296,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214978732879436087)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257918193767233817)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ro.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6272,8 +6329,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214979115219436092)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257918576107233822)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ru.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6310,8 +6367,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214979469771436096)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257918930659233826)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/si.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6343,8 +6400,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214979804214436100)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257919265102233830)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/sk.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6374,8 +6431,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214980227079436104)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257919687967233834)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/sl.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6408,8 +6465,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214980600479436107)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257920061367233837)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/sr-cy.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6439,8 +6496,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214980991428436111)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257920452316233841)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/sr.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6470,8 +6527,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214981370798436114)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257920831686233844)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/sv.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6509,8 +6566,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214981827318436118)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257921288206233848)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/ta.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6548,8 +6605,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214982244461436121)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257921705349233851)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/te.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6584,8 +6641,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214982607014436126)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257922067902233856)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/th.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6615,8 +6672,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214983006440436130)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257922467328233860)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/tl.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6647,8 +6704,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214983360876436134)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257922821764233864)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/tr.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6681,8 +6738,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214983778660436138)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257923239548233868)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/uk.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6713,8 +6770,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214984169224436142)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257923630112233872)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/zh-cn.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6745,8 +6802,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214984609173436147)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257924070061233877)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/locale/zh-tw.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6886,8 +6943,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214984993931436151)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257924454819233881)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/storyjs-embed-cdn.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -6951,8 +7008,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214985446028436155)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257924906916233885)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/storyjs-embed-generator.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -7081,8 +7138,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214985770812436159)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257925231700233889)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/storyjs-embed.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -9011,8 +9068,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214986222725436163)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257925683613233893)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/timeline-min.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'
@@ -12132,8 +12189,8 @@ end;
 /
 begin
 wwv_flow_api.create_plugin_file(
- p_id=>wwv_flow_api.id(11214986603461436167)
-,p_plugin_id=>wwv_flow_api.id(11214906860564067607)
+ p_id=>wwv_flow_api.id(11257926064349233897)
+,p_plugin_id=>wwv_flow_api.id(11257846321451865337)
 ,p_file_name=>'js/timeline.js'
 ,p_mime_type=>'application/x-javascript'
 ,p_file_charset=>'utf-8'

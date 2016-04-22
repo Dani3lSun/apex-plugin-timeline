@@ -1,6 +1,6 @@
 /*-------------------------------------
  * Timeline JS Functions
- * Version: 1.0 (06.08.2015)
+ * Version: 1.1 (22.04.2016)
  * Author:  Daniel Hochleitner
  *-------------------------------------
 */
@@ -22,6 +22,7 @@ FUNCTION render_timeline(p_region              IN apex_plugin.t_region,
   l_headline_column    VARCHAR2(100) := p_region.attribute_11;
   l_description_column VARCHAR2(100) := p_region.attribute_12;
   l_media_url_column   VARCHAR2(100) := p_region.attribute_13;
+  l_timeline_type      VARCHAR2(100) := p_region.attribute_14;
   -- other variables
   l_region_id              VARCHAR2(100);
   l_timeline_config_string VARCHAR2(2000);
@@ -54,6 +55,12 @@ BEGIN
                                                   'js/',
                               p_version        => NULL,
                               p_skip_extension => FALSE);
+  -- type: timeline slider only css
+  IF l_timeline_type = 'SLIDERONLY' THEN
+    apex_css.add(p_css => 'div#' || l_region_id ||
+                          ' .vco-feature { display: none; } div#' ||
+                          l_region_id || ' .vco-slider { display: none; }');
+  END IF;
   --
   -- Get Data from Source
   l_column_value_list := apex_plugin_util.get_data2(p_sql_statement  => p_region.source,
@@ -90,15 +97,19 @@ BEGIN
   --
   -- json header timeline
   l_timeline_json_string := '{ "timeline": {"headline":"' ||
-                            REPLACE(REPLACE(l_headline,
-                                            '"',
+                            REPLACE(REPLACE(REPLACE(l_headline,
+                                                    '"',
+                                                    ' '),
+                                            chr(10),
                                             ' '),
-                                    chr(10),
+                                    chr(13),
                                     ' ') || '","type":"default","text":"' ||
-                            REPLACE(REPLACE(l_description,
-                                            '"',
+                            REPLACE(REPLACE(REPLACE(l_description,
+                                                    '"',
+                                                    ' '),
+                                            chr(10),
                                             ' '),
-                                    chr(10),
+                                    chr(13),
                                     ' ') || '",';
   l_timeline_json_string := l_timeline_json_string || '"asset": {"media":"' ||
                             l_preview_url ||
@@ -133,36 +144,50 @@ BEGIN
                                                                                     .data_type,
                                                                      p_value     => l_column_value_list(l_headline_no)
                                                                                     .value_list(l_row_num));
+    l_headline_value       := apex_plugin_util.replace_substitutions(p_value  => l_headline_value,
+                                                                     p_escape => TRUE);
     l_timeline_json_string := l_timeline_json_string || '"headline":"' ||
-                              REPLACE(REPLACE(l_headline_value,
-                                              '"',
+                              REPLACE(REPLACE(REPLACE(l_headline_value,
+                                                      '"',
+                                                      ' '),
+                                              chr(10),
                                               ' '),
-                                      chr(10),
+                                      chr(13),
                                       ' ') || '",';
     -- description
-    l_description_value := apex_plugin_util.get_value_as_varchar2(p_data_type => l_column_value_list(l_description_no)
-                                                                                 .data_type,
-                                                                  p_value     => l_column_value_list(l_description_no)
-                                                                                 .value_list(l_row_num));
+    IF l_description_no IS NOT NULL THEN
+      l_description_value := apex_plugin_util.get_value_as_varchar2(p_data_type => l_column_value_list(l_description_no)
+                                                                                   .data_type,
+                                                                    p_value     => l_column_value_list(l_description_no)
+                                                                                   .value_list(l_row_num));
+    END IF;
     IF l_description_value IS NULL THEN
       l_timeline_json_string := l_timeline_json_string || '"text":"",';
     ELSE
+      l_description_value    := apex_plugin_util.replace_substitutions(p_value  => l_description_value,
+                                                                       p_escape => TRUE);
       l_timeline_json_string := l_timeline_json_string || '"text":"' ||
-                                REPLACE(REPLACE(l_description_value,
-                                                '"',
+                                REPLACE(REPLACE(REPLACE(l_description_value,
+                                                        '"',
+                                                        ' '),
+                                                chr(10),
                                                 ' '),
-                                        chr(10),
+                                        chr(13),
                                         ' ') || '",';
     END IF;
     -- media url
-    l_media_url_value := apex_plugin_util.get_value_as_varchar2(p_data_type => l_column_value_list(l_media_url_no)
-                                                                               .data_type,
-                                                                p_value     => l_column_value_list(l_media_url_no)
-                                                                               .value_list(l_row_num));
+    IF l_media_url_no IS NOT NULL THEN
+      l_media_url_value := apex_plugin_util.get_value_as_varchar2(p_data_type => l_column_value_list(l_media_url_no)
+                                                                                 .data_type,
+                                                                  p_value     => l_column_value_list(l_media_url_no)
+                                                                                 .value_list(l_row_num));
+    END IF;
     IF l_media_url_value IS NULL THEN
       l_timeline_json_string := l_timeline_json_string ||
                                 '"asset":{"media":"","credit":"","caption":""}';
     ELSE
+      l_media_url_value      := apex_plugin_util.replace_substitutions(p_value  => l_media_url_value,
+                                                                       p_escape => TRUE);
       l_timeline_json_string := l_timeline_json_string ||
                                 '"asset":{"media":"' || l_media_url_value ||
                                 '","credit":"","caption":""}';
@@ -175,7 +200,8 @@ BEGIN
   l_timeline_json_string := l_timeline_json_string || ']}}';
   --
   -- write inline timeline json
-  apex_javascript.add_inline_code(p_code => 'var dataObject = ' ||
+  apex_javascript.add_inline_code(p_code => 'var dataObject_' ||
+                                            l_region_id || ' = ' ||
                                             l_timeline_json_string);
   --
   --
@@ -186,7 +212,7 @@ BEGIN
   l_timeline_config_string := l_timeline_config_string || ', height: ''' ||
                               l_height || '''';
   l_timeline_config_string := l_timeline_config_string ||
-                              ', source: dataObject';
+                              ', source: dataObject_' || l_region_id;
   l_timeline_config_string := l_timeline_config_string || ', embed_id: ''' ||
                               l_region_id || '''';
   l_timeline_config_string := l_timeline_config_string || ', font: ''' ||
