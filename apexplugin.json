@@ -1,6 +1,6 @@
 {
   "name" : "Timeline",
-  "version" : "1.0",
+  "version" : "1.1",
   "description" : "Timeline is a region type plugin that allows you to draft very nice looking timelines with a single sql query.",
   "keywords" : ["timeline"],
   "homepage" : "https://github.com/Dani3lSun/apex-plugin-timeline",

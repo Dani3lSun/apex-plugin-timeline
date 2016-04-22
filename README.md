@@ -7,12 +7,14 @@ You can embed various sorts of media via URLs, for example:
 - Videos
 - Music
 - Youtube
-- Flickr 
+- Flickr
 - Twitter
 - Google Maps
 - and many more, read more on timeline.js homepage.
 
 ##Changelog
+####1.1 - fixed broken timeline when optional columns from sql source were null / fixed broken timeline when headline or description contains special character returns / fixed display of apex substitution strings in sql source and plugin attributes / enhancement: added possibility to display timeline slider only instead of timeline + media content
+
 ####1.0 - Initial Release
 
 ##Install
@@ -39,7 +41,7 @@ SELECT start_date (date),
   FROM timeline
 ```
 ##Demo Application
-https://apex.oracle.com/pls/apex/f?p=57743:9
+https://apex.oracle.com/pls/apex/f?p=APEXPLUGIN
 
 ##Preview
 ![](https://github.com/Dani3lSun/apex-plugin-timeline/blob/master/preview.png)
