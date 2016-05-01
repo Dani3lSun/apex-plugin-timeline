@@ -1,4 +1,4 @@
-#Oracle APEX Region Plugin - Timeline
+# Oracle APEX Region Plugin - Timeline
 Timeline is a region type plugin that allows you to draft very nice looking timelines with a single sql query.
 It is based on JS Framework timeline.js (https://github.com/NUKnightLab/TimelineJS).
 
@@ -12,16 +12,16 @@ You can embed various sorts of media via URLs, for example:
 - Google Maps
 - and many more, read more on timeline.js homepage.
 
-##Changelog
-####1.1 - fixed broken timeline when optional columns from sql source were null / fixed broken timeline when headline or description contains special character returns / fixed display of apex substitution strings in sql source and plugin attributes / enhancement: added possibility to display timeline slider only instead of timeline + media content
+## Changelog
+#### 1.1 - fixed broken timeline when optional columns from sql source were null / fixed broken timeline when headline or description contains special character returns / fixed display of apex substitution strings in sql source and plugin attributes / enhancement: added possibility to display timeline slider only instead of timeline + media content
 
-####1.0 - Initial Release
+#### 1.0 - Initial Release
 
-##Install
+## Install
 - Import plugin file "region_type_plugin_de_danielh_timeline.sql" from source directory into your application
 - (Optional) Deploy the CSS/JS files from "server" directory on your webserver and change the "File Prefix" to webservers folder.
 
-##Plugin Settings
+## Plugin Settings
 The plugin settings are highly customizable and you can change:
 - Headline of master page
 - Description of master page
@@ -31,7 +31,7 @@ The plugin settings are highly customizable and you can change:
 - set the default width(pixel and percent) and height(only pixel)
 - All the rest comes out of your sql query.
 
-####Example SQL Query:
+#### Example SQL Query:
 ```language-sql
 SELECT start_date (date),
        end_date (date),
@@ -40,10 +40,10 @@ SELECT start_date (date),
        media_url (varchar2 - nullable)
   FROM timeline
 ```
-##Demo Application
+## Demo Application
 https://apex.oracle.com/pls/apex/f?p=APEXPLUGIN
 
-##Preview
+## Preview
 ![](https://github.com/Dani3lSun/apex-plugin-timeline/blob/master/preview.png)
 ---
 
